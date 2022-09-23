@@ -145,8 +145,11 @@ final class RequestFactory {
 
     final Retrofit retrofit;
     final Method method;
+    // 方法注解
     final Annotation[] methodAnnotations;
+    // 方法入参列表注解，二维数组
     final Annotation[][] parameterAnnotationsArray;
+    // 方法参数类型列表
     final Type[] parameterTypes;
 
     boolean gotField;
@@ -177,6 +180,7 @@ final class RequestFactory {
     }
 
     RequestFactory build() {
+      // 遍历解析方法注解
       for (Annotation annotation : methodAnnotations) {
         parseMethodAnnotation(annotation);
       }
@@ -202,6 +206,7 @@ final class RequestFactory {
       int parameterCount = parameterAnnotationsArray.length;
       parameterHandlers = new ParameterHandler<?>[parameterCount];
       for (int p = 0, lastParameter = parameterCount - 1; p < parameterCount; p++) {
+        // 遍历时只会有一次满足条件：p == lastParameter
         parameterHandlers[p] =
             parseParameter(p, parameterTypes[p], parameterAnnotationsArray[p], p == lastParameter);
       }
@@ -316,6 +321,15 @@ final class RequestFactory {
       return builder.build();
     }
 
+    /**
+     * 解析接口抽象方法的参数
+     *
+     * @param p                 参数index
+     * @param parameterType     参数类型
+     * @param annotations       参数注解
+     * @param allowContinuation 是否可能被Kotlin的suspend关键字修饰
+     * @return ParameterHandler
+     */
     private @Nullable ParameterHandler<?> parseParameter(
         int p, Type parameterType, @Nullable Annotation[] annotations, boolean allowContinuation) {
       ParameterHandler<?> result = null;
@@ -357,6 +371,7 @@ final class RequestFactory {
     @Nullable
     private ParameterHandler<?> parseParameterAnnotation(
         int p, Type type, Annotation[] annotations, Annotation annotation) {
+      // URL resolved against the {@linkplain Retrofit#baseUrl() base URL}.
       if (annotation instanceof Url) {
         validateResolvableType(p, type);
         if (gotUrl) {

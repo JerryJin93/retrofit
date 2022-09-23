@@ -26,6 +26,7 @@ import okhttp3.Request;
 import okio.Timeout;
 
 final class DefaultCallAdapterFactory extends CallAdapter.Factory {
+  // 回调线程池
   private final @Nullable Executor callbackExecutor;
 
   DefaultCallAdapterFactory(@Nullable Executor callbackExecutor) {
@@ -42,6 +43,11 @@ final class DefaultCallAdapterFactory extends CallAdapter.Factory {
       throw new IllegalArgumentException(
           "Call return type must be parameterized as Call<Foo> or Call<? extends Foo>");
     }
+
+    // 根据返回类型获取响应类型，返回类型必定为Response<?>, 其中?为响应体的类型
+    // 所以可以把returnType强转为参数化类型ParameterizedType
+
+    // Type是Java类型系统的顶级父类
     final Type responseType = Utils.getParameterUpperBound(0, (ParameterizedType) returnType);
 
     final Executor executor =
@@ -62,6 +68,11 @@ final class DefaultCallAdapterFactory extends CallAdapter.Factory {
     };
   }
 
+  /**
+   * A wrapped call implements Call interface by using static proxy pattern.
+   *
+   * @param <T> Successful response body type.
+   */
   static final class ExecutorCallbackCall<T> implements Call<T> {
     final Executor callbackExecutor;
     final Call<T> delegate;

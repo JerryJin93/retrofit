@@ -34,6 +34,9 @@ import java.util.concurrent.Executor;
 import javax.annotation.Nullable;
 import org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement;
 
+/**
+ * Cross platform support.
+ */
 abstract class Platform {
   private static final Platform PLATFORM = createPlatform();
 
@@ -44,6 +47,7 @@ abstract class Platform {
   private static Platform createPlatform() {
     switch (System.getProperty("java.vm.name")) {
       case "Dalvik":
+        // 优先判断Android 24
         if (Android24.isSupported()) {
           return new Android24();
         }

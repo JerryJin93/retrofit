@@ -45,6 +45,7 @@ abstract class HttpServiceMethod<ResponseT, ReturnT> extends ServiceMethod<Retur
     Type adapterType;
     if (isKotlinSuspendFunction) {
       Type[] parameterTypes = method.getGenericParameterTypes();
+      // 拿到Continuation泛型的真实类型
       Type responseType =
           Utils.getParameterLowerBound(
               0, (ParameterizedType) parameterTypes[parameterTypes.length - 1]);
@@ -66,9 +67,14 @@ abstract class HttpServiceMethod<ResponseT, ReturnT> extends ServiceMethod<Retur
       adapterType = method.getGenericReturnType();
     }
 
+    // 创建CallAdapter实例
+    // Android平台默认为DefaultCallAdapterFactory
+    // adapterType比较重要，用于获取响应体的数据类型——responseType
     CallAdapter<ResponseT, ReturnT> callAdapter =
         createCallAdapter(retrofit, method, adapterType, annotations);
     Type responseType = callAdapter.responseType();
+    // Retrofit中的HTTP请求响应类型不能为：
+    // 1. okhttp3.Response 2. Retrofit的Response，必须是泛型
     if (responseType == okhttp3.Response.class) {
       throw methodError(
           method,
@@ -86,11 +92,15 @@ abstract class HttpServiceMethod<ResponseT, ReturnT> extends ServiceMethod<Retur
       throw methodError(method, "HEAD method must use Void or Unit as response type.");
     }
 
+    // 拿到response converter
+    // 注意responseType, converter通过这个类型反序列化数据到POJO instance
     Converter<ResponseBody, ResponseT> responseConverter =
         createResponseConverter(retrofit, method, responseType);
 
+    // it uses to be OkHttpClient instance.
     okhttp3.Call.Factory callFactory = retrofit.callFactory;
     if (!isKotlinSuspendFunction) {
+      // 非Kotlin suspend关键字修饰的方法
       return new CallAdapted<>(requestFactory, callFactory, responseConverter, callAdapter);
     } else if (continuationWantsResponse) {
       //noinspection unchecked Kotlin compiler guarantees ReturnT to be Object.
@@ -149,6 +159,7 @@ abstract class HttpServiceMethod<ResponseT, ReturnT> extends ServiceMethod<Retur
   @Override
   final @Nullable ReturnT invoke(Object[] args) {
     Call<ResponseT> call = new OkHttpCall<>(requestFactory, args, callFactory, responseConverter);
+    // 开始发起HTTP请求
     return adapt(call, args);
   }
 
@@ -168,6 +179,7 @@ abstract class HttpServiceMethod<ResponseT, ReturnT> extends ServiceMethod<Retur
 
     @Override
     protected ReturnT adapt(Call<ResponseT> call, Object[] args) {
+      // 这里的callAdapter#adapt的返回类型是Call<Object>, 也就是ExecutorCallbackCall
       return callAdapter.adapt(call);
     }
   }

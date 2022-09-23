@@ -144,12 +144,16 @@ final class OkHttpCall<T> implements Call<T> {
       call.cancel();
     }
 
+    // OkHttp3的RealCall#enqueue实际上也是Dispatcher#enqueue
+    // 然后进入OkHttp3网络请求流程
     call.enqueue(
         new okhttp3.Callback() {
           @Override
           public void onResponse(okhttp3.Call call, okhttp3.Response rawResponse) {
             Response<T> response;
             try {
+              // worker thread
+              // 解析响应
               response = parseResponse(rawResponse);
             } catch (Throwable e) {
               throwIfFatal(e);
@@ -205,6 +209,9 @@ final class OkHttpCall<T> implements Call<T> {
   }
 
   private okhttp3.Call createRawCall() throws IOException {
+    // 通过ServiceMethod#parseAnnotations中
+    // RequestFactory#parseAnnotions解析出来的reqeustFactory创建request
+    // 这里的callFactory实际上就是初始化Retrofit时传入的OkHttpClient实例
     okhttp3.Call call = callFactory.newCall(requestFactory.create(args));
     if (call == null) {
       throw new NullPointerException("Call.Factory returned null.");
@@ -240,6 +247,7 @@ final class OkHttpCall<T> implements Call<T> {
 
     ExceptionCatchingResponseBody catchingBody = new ExceptionCatchingResponseBody(rawBody);
     try {
+      // convert response
       T body = responseConverter.convert(catchingBody);
       return Response.success(body, rawResponse);
     } catch (RuntimeException e) {

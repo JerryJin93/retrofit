@@ -206,6 +206,7 @@ public final class Retrofit {
       result = serviceMethodCache.get(method);
       if (result == null) {
         result = ServiceMethod.parseAnnotations(this, method);
+        // put the parsed service method to memory cache.
         serviceMethodCache.put(method, result);
       }
     }
