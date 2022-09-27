@@ -46,6 +46,9 @@ abstract class HttpServiceMethod<ResponseT, ReturnT> extends ServiceMethod<Retur
     if (isKotlinSuspendFunction) {
       Type[] parameterTypes = method.getGenericParameterTypes();
       // 拿到Continuation泛型的真实类型
+      // getLowerBound的原因还是因为PECS
+      // getLowerBound <=> 拿到 ? super TypeXXX 中的?表示的类型，符合Java的多态性规范——父类引用指向子类对象。
+      // 方便下面的instanceof判断，因为上界类型instanceof判断成立，那么其子类必然通过相同条件的instanceof判断。
       Type responseType =
           Utils.getParameterLowerBound(
               0, (ParameterizedType) parameterTypes[parameterTypes.length - 1]);
