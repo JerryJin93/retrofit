@@ -57,6 +57,14 @@ abstract class HttpServiceMethod<ResponseT, ReturnT> extends ServiceMethod<Retur
         responseType = Utils.getParameterUpperBound(0, (ParameterizedType) responseType);
         continuationWantsResponse = true;
       } else {
+        if (getRawType(responseType) == Call.class) {
+          throw methodError(
+              method,
+              "Suspend functions should not return Call, as they already execute asynchronously.\n"
+                  + "Change its return type to %s",
+              Utils.getParameterUpperBound(0, (ParameterizedType) responseType));
+        }
+
         continuationIsUnit = Utils.isUnit(responseType);
         // TODO figure out if type is nullable or not
         // Metadata metadata = method.getDeclaringClass().getAnnotation(Metadata.class)
@@ -88,7 +96,6 @@ abstract class HttpServiceMethod<ResponseT, ReturnT> extends ServiceMethod<Retur
     if (responseType == Response.class) {
       throw methodError(method, "Response must include generic type (e.g., Response<String>)");
     }
-    // TODO support Unit for Kotlin?
     if (requestFactory.httpMethod.equals("HEAD")
         && !Void.class.equals(responseType)
         && !Utils.isUnit(responseType)) {
@@ -160,8 +167,9 @@ abstract class HttpServiceMethod<ResponseT, ReturnT> extends ServiceMethod<Retur
   }
 
   @Override
-  final @Nullable ReturnT invoke(Object[] args) {
-    Call<ResponseT> call = new OkHttpCall<>(requestFactory, args, callFactory, responseConverter);
+  final @Nullable ReturnT invoke(Object instance, Object[] args) {
+    Call<ResponseT> call =
+        new OkHttpCall<>(requestFactory, instance, args, callFactory, responseConverter);
     // 开始发起HTTP请求
     return adapt(call, args);
   }
@@ -258,7 +266,10 @@ abstract class HttpServiceMethod<ResponseT, ReturnT> extends ServiceMethod<Retur
         } else {
           return KotlinExtensions.await(call, continuation);
         }
-      } catch (Exception e) {
+      } catch (VirtualMachineError | ThreadDeath | LinkageError e) {
+        // Do not attempt to capture fatal throwables. This list is derived RxJava's `throwIfFatal`.
+        throw e;
+      } catch (Throwable e) {
         return KotlinExtensions.suspendAndThrow(e, continuation);
       }
     }

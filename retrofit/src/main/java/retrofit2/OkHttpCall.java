@@ -32,6 +32,7 @@ import okio.Timeout;
 
 final class OkHttpCall<T> implements Call<T> {
   private final RequestFactory requestFactory;
+  private final Object instance;
   private final Object[] args;
   private final okhttp3.Call.Factory callFactory;
   private final Converter<ResponseBody, T> responseConverter;
@@ -49,10 +50,12 @@ final class OkHttpCall<T> implements Call<T> {
 
   OkHttpCall(
       RequestFactory requestFactory,
+      Object instance,
       Object[] args,
       okhttp3.Call.Factory callFactory,
       Converter<ResponseBody, T> responseConverter) {
     this.requestFactory = requestFactory;
+    this.instance = instance;
     this.args = args;
     this.callFactory = callFactory;
     this.responseConverter = responseConverter;
@@ -61,7 +64,7 @@ final class OkHttpCall<T> implements Call<T> {
   @SuppressWarnings("CloneDoesntCallSuperClone") // We are a final type & this saves clearing state.
   @Override
   public OkHttpCall<T> clone() {
-    return new OkHttpCall<>(requestFactory, args, callFactory, responseConverter);
+    return new OkHttpCall<>(requestFactory, instance, args, callFactory, responseConverter);
   }
 
   @Override
@@ -212,7 +215,7 @@ final class OkHttpCall<T> implements Call<T> {
     // 通过ServiceMethod#parseAnnotations中
     // RequestFactory#parseAnnotions解析出来的reqeustFactory创建request
     // 这里的callFactory实际上就是初始化Retrofit时传入的OkHttpClient实例
-    okhttp3.Call call = callFactory.newCall(requestFactory.create(args));
+    okhttp3.Call call = callFactory.newCall(requestFactory.create(instance, args));
     if (call == null) {
       throw new NullPointerException("Call.Factory returned null.");
     }

@@ -22,9 +22,9 @@ import java.lang.reflect.Type;
 import javax.annotation.Nullable;
 
 abstract class ServiceMethod<T> {
-  static <T> ServiceMethod<T> parseAnnotations(Retrofit retrofit, Method method) {
+  static <T> ServiceMethod<T> parseAnnotations(Retrofit retrofit, Class<?> service, Method method) {
     // 解析接口方法的注解以及参数注解
-    RequestFactory requestFactory = RequestFactory.parseAnnotations(retrofit, method);
+    RequestFactory requestFactory = RequestFactory.parseAnnotations(retrofit, service, method);
 
     Type returnType = method.getGenericReturnType();
     if (Utils.hasUnresolvableType(returnType)) {
@@ -40,5 +40,5 @@ abstract class ServiceMethod<T> {
     return HttpServiceMethod.parseAnnotations(retrofit, method, requestFactory);
   }
 
-  abstract @Nullable T invoke(Object[] args);
+  abstract @Nullable T invoke(Object instance, Object[] args);
 }
